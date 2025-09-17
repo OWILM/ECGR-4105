@@ -1,10 +1,9 @@
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # =========================================================================
-#  Function Definitions (As per your code)
+#  Function Definitions
 # =========================================================================
 
 def compute_cost(X, y, theta):
@@ -30,87 +29,73 @@ def gradient_descent(X, y, theta, alpha, iterations):
         predictions = X.dot(theta)
         errors = np.subtract(predictions, y)
         sum_delta = (alpha / m) * X.transpose().dot(errors)
-        theta -= sum_delta 
+        theta -= sum_delta
         cost_history[i] = compute_cost(X, y, theta)
 
     return theta, cost_history
 
 # =========================================================================
-# Problem 1
+#  Problem 1
 # =========================================================================
 
-# Load the dataset
+# 1. Load the dataset
 df = pd.read_csv('D3.csv')
 y = df.values[:, 3]
 m = len(y)
 
-# Setup for iterating through each feature
+# 2. Setup for iterating through each feature
 features = ['X1', 'X2', 'X3']
 colors = ['blue', 'green', 'red']
 final_costs = {}
 
-# Loop through each feature, run regression, and plot results
+# 3. Loop through each feature, run regression, and plot results
 for i, feature_name in enumerate(features):
     print(f"\n" + "="*40)
     print(f"  Running Linear Regression for Feature: {feature_name}")
     print("="*40)
 
-    # --- Data Preparation for the current feature ---
-    X_feature = df.values[:, i]  # Get the feature column (X1, X2, or X3)
-    X = np.vstack(X_feature)     # Reshape X to be a 2D array
-    X_with_intercept = np.hstack((np.ones((m, 1)), X)) # Add intercept term
+    # Data Preparation for the current feature
+    X_feature = df.values[:, i]
+    X = np.vstack(X_feature)
+    X_with_intercept = np.hstack((np.ones((m, 1)), X))
 
-    # --- Gradient Descent ---
-    theta = np.zeros(2) # Initialize theta for this feature
-    # change alpha (learning rate) to see different convergence behaviors
+    # Gradient Descent
+    theta = np.zeros(2)
     alpha = 0.01
     iterations = 1500
 
     theta, cost_history = gradient_descent(X_with_intercept, y, theta, alpha, iterations)
     
-    # Store the final cost for later comparison
     final_cost = cost_history[-1]
     final_costs[feature_name] = final_cost
 
-    # --- Report and Plot Results ---
-    print(f"Gradient descent finished.")
+    # Report and Plot Results
     print(f"Final Theta: θ₀ = {theta[0]:.4f}, θ₁ = {theta[1]:.4f}")
     print(f"Final Linear Model: Y = {theta[0]:.4f} + {theta[1]:.4f} * {feature_name}")
     print(f"Final Cost (Loss): {final_cost:.4f}")
 
-    # Plotting
-    plt.figure(figsize=(12, 5))
-
-    # Plot 1: Regression Line
-    plt.subplot(1, 2, 1)
-    plt.scatter(X_feature, y, color=colors[i], marker='+', label='Training Data')
-    plt.plot(X_feature, X_with_intercept.dot(theta), 'k-', label='Linear Regression')
+    # Plot 1: Regression Fit
+    plt.scatter(X_feature, y, color=colors[i])
+    plt.plot(X_feature, X_with_intercept.dot(theta), color='black')
+    plt.title(f'Regression Model for {feature_name}')
     plt.xlabel(feature_name)
     plt.ylabel('Y')
-    plt.title(f'Regression Model for {feature_name}')
-    plt.legend()
-    plt.grid(True)
+    plt.show()
 
-    # Plot 2: Loss Curve
-    plt.subplot(1, 2, 2)
+    # Plot 2: Loss Curve 
     plt.plot(range(iterations), cost_history, color='purple')
+    plt.title(f'Loss Curve for {feature_name}')
     plt.xlabel('Number of Iterations')
     plt.ylabel('Cost (J)')
-    plt.title(f'Loss Curve for {feature_name}')
-    plt.grid(True)
-
-    plt.tight_layout()
     plt.show()
 
 
-# Compare the final costs
+# 4. Compare the final costs
 print("\n" + "="*40)
 print("  Final Comparison")
 print("="*40)
 for feature, cost in final_costs.items():
     print(f"Final cost for {feature}: {cost:.4f}")
 
-# Find and report the best explanatory variable
 best_feature = min(final_costs, key=final_costs.get)
 print(f"\n--> The explanatory variable with the lowest loss is: {best_feature}")
-
