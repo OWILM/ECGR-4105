@@ -1,1 +1,81 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
+# =========================================================================
+#  Function Definitions (Kept the same as your code)
+# =========================================================================
+
+def compute_cost(X, y, theta):
+    """
+    Computes the cost (Mean Squared Error) for linear regression.
+    """
+    m = len(y)
+    predictions = X.dot(theta)
+    errors = np.subtract(predictions, y) 
+    sqrErrors = np.square(errors)
+    J = 1 / (2 * m) * np.sum(sqrErrors)
+    return J
+
+def gradient_descent(X, y, theta, alpha, iterations):
+    """
+    Performs gradient descent to learn theta by taking a specified number
+    of gradient steps with a given learning rate.
+    """
+    m = len(y)
+    cost_history = np.zeros(iterations)
+
+    for i in range(iterations):
+        predictions = X.dot(theta)
+        errors = np.subtract(predictions, y)
+        sum_delta = (alpha / m) * X.transpose().dot(errors)
+        theta -= sum_delta
+        cost_history[i] = compute_cost(X, y, theta)
+
+    return theta, cost_history
+
+# =========================================================================
+#  Main Script for Problem 2
+# =========================================================================
+
+# 1. Load and prepare the data
+df = pd.read_csv('D3.csv')
+x1 = df['X1'].values
+x2 = df['X2'].values
+x3 = df['X3'].values
+y = df['Y'].values
+m = len(y)
+intercept = np.ones(m)
+X = np.column_stack((intercept, x1, x2, x3))
+
+# 2. Run Gradient Descent
+theta = np.zeros(4)
+alpha = 0.01
+iterations = 1500
+theta, cost_history = gradient_descent(X, y, theta, alpha, iterations)
+
+# 3. Report the Final Model (Required Output)
+print("--- Final Model ---")
+print(f"Linear Model: Y = {theta[0]:.2f} + {theta[1]:.2f}*X1 + {theta[2]:.2f}*X2 + {theta[3]:.2f}*X3")
+print(f"Final Cost (Loss): {cost_history[-1]:.4f}")
+
+# 4. Plot the Loss Curve (Required Output)
+plt.plot(range(iterations), cost_history, color='purple')
+plt.title('Loss Curve for Multi-Variable Regression')
+plt.xlabel('Number of Iterations')
+plt.ylabel('Cost (J)')
+plt.show()
+
+# 5. Predict values for new data (Required Output)
+print("\nPredictions")
+point1 = np.array([1,1,1,1])
+point2 = np.array([1,2,0,4])
+point3 = np.array([1,3,2,1])
+
+pred1 = point1.dot(theta)
+pred2 = point2.dot(theta)
+pred3 = point3.dot(theta)
+
+print(f"Prediction for (X1=1, X2=1, X3=1): {pred1:.4f}")
+print(f"Prediction for (X1=2, X2=0, X3=4): {pred2:.4f}")
+print(f"Prediction for (X1=3, X2=2, X3=1): {pred3:.4f}")
