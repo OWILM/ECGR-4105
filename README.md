@@ -28,6 +28,7 @@ Alternatively, you can use a `requirements.txt` file:
 numpy
 pandas
 matplotlib
+ipython
 ```
 
 Install all packages at once:
@@ -38,4 +39,5 @@ pip install -r requirements.txt
 ## Running the Code
 
 Make sure `D3.csv` is in the same folder as your code. Run your Python file or Jupyter notebook after activating your environment.
+
 
