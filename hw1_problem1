@@ -50,10 +50,6 @@ final_costs = {}
 
 # 3. Loop through each feature, run regression, and plot results
 for i, feature_name in enumerate(features):
-    print(f"\n" + "="*40)
-    print(f"  Running Linear Regression for Feature: {feature_name}")
-    print("="*40)
-
     # Data Preparation for the current feature
     X_feature = df.values[:, i]
     X = np.vstack(X_feature)
@@ -61,18 +57,12 @@ for i, feature_name in enumerate(features):
 
     # Gradient Descent
     theta = np.zeros(2)
-    alpha = 0.01
+    alpha = 0.001
     iterations = 1500
 
     theta, cost_history = gradient_descent(X_with_intercept, y, theta, alpha, iterations)
-    
     final_cost = cost_history[-1]
     final_costs[feature_name] = final_cost
-
-    # Report and Plot Results
-    print(f"Final Theta: θ₀ = {theta[0]:.4f}, θ₁ = {theta[1]:.4f}")
-    print(f"Final Linear Model: Y = {theta[0]:.4f} + {theta[1]:.4f} * {feature_name}")
-    print(f"Final Cost (Loss): {final_cost:.4f}")
 
     # Plot 1: Regression Fit
     plt.scatter(X_feature, y, color=colors[i])
@@ -91,11 +81,9 @@ for i, feature_name in enumerate(features):
 
 
 # 4. Compare the final costs
-print("\n" + "="*40)
-print("  Final Comparison")
-print("="*40)
+print("\nFinal Comparison of Costs:")
 for feature, cost in final_costs.items():
-    print(f"Final cost for {feature}: {cost:.4f}")
+    print(f"{feature}: {cost:.4f}")
 
 best_feature = min(final_costs, key=final_costs.get)
-print(f"\n--> The explanatory variable with the lowest loss is: {best_feature}")
+print(f"\nExplanatory variable with the lowest loss: {best_feature}")
