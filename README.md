@@ -6,6 +6,7 @@ Make sure you have the following Python packages installed:
 - numpy
 - pandas
 - matplotlib
+- ipython
 
 ## How to Install Packages
 
@@ -37,3 +38,4 @@ pip install -r requirements.txt
 ## Running the Code
 
 Make sure `D3.csv` is in the same folder as your code. Run your Python file or Jupyter notebook after activating your environment.
+
