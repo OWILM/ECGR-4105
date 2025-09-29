@@ -2,7 +2,7 @@
 
 This repository contains assignments for Machine Learning Course
 
-##Assignments
+## Assignments
 - [HW1: Linear Regression with Gradient Descent](HW1/README.md)
 - [HW2: Linear Regression on Housing Market Data]
 
@@ -11,4 +11,5 @@ Each Assignment folder contains:
 - Dataset Files (if needed)
 - Instructions for the assingment
 - A dedicated README.md 
+
 
