@@ -1,1 +1,120 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
+
+#  Function Definitions 
+
+def compute_cost(X, y, theta):
+    """
+    Computes the cost (Mean Squared Error) for linear regression.
+    """
+    m = len(y)
+    if m == 0:
+        return 0
+    predictions = X.dot(theta)
+    errors = np.subtract(predictions, y) 
+    sqrErrors = np.square(errors)
+    J = 1 / (2 * m) * np.sum(sqrErrors)
+    return J
+
+def gradient_descent(X_train, y_train, X_val, y_val, theta, alpha, iterations):
+    """
+    Performs gradient descent and calculates both training and validation loss.
+    """
+    m = len(y_train)
+    train_cost_history = np.zeros(iterations)
+    val_cost_history = np.zeros(iterations)
+
+    for i in range(iterations):
+        predictions = X_train.dot(theta)
+        errors = np.subtract(predictions, y_train)
+        sum_delta = (alpha / m) * X_train.transpose().dot(errors)
+        theta -= sum_delta
+        
+        # Calculate and store cost for both training and validation sets
+        train_cost_history[i] = compute_cost(X_train, y_train, theta)
+        val_cost_history[i] = compute_cost(X_val, y_val, theta)
+
+    return theta, train_cost_history, val_cost_history
+
+
+
+# Load and Preprocess Data
+# Load CSV from the same folder as this script
+here = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(here, "Housing.csv")
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"Housing.csv not found in the same folder as the script: {os.path.abspath(csv_path)}")
+
+df = pd.read_csv(csv_path)
+
+# Convert categorical 'yes'/'no' columns to binary 1/0
+categorical_cols = ['mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'prefarea']
+for col in categorical_cols:
+    df[col] = df[col].map({'yes': 1, 'no': 0})
+
+# Solve Problem 1a
+
+# a) Select features and target
+features_1a = ['area', 'bedrooms', 'bathrooms', 'stories', 'parking']
+X_1a = df[features_1a].values
+y = df['price'].values
+
+# b) Split data into 80% training and 20% validation sets
+X_train_1a, X_val_1a, y_train, y_val = train_test_split(X_1a, y, test_size=0.2, random_state=42)
+
+# c) Add intercept term
+X_train_1a = np.hstack((np.ones((X_train_1a.shape[0], 1)), X_train_1a))
+X_val_1a = np.hstack((np.ones((X_val_1a.shape[0], 1)), X_val_1a))
+
+# d) Run Gradient Descent
+theta_1a = np.zeros(X_train_1a.shape[1])
+alpha = 0.01 
+iterations = 1500
+theta_1a, train_cost_1a, val_cost_1a = gradient_descent(X_train_1a, y_train, X_val_1a, y_val, theta_1a, alpha, iterations)
+
+# e) Report results and plot
+print("Final Theta for Problem 1a:", theta_1a)
+plt.close('all')
+plt.figure(figsize=(10, 6))
+plt.plot(range(iterations), train_cost_1a, label='Training Loss')
+plt.plot(range(iterations), val_cost_1a, label='Validation Loss')
+plt.title('Problem 1a: Training vs. Validation Loss')
+plt.xlabel('Number of Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Solve Problem 1b
+
+# a) Select features and target
+features_1b = ['area', 'bedrooms', 'bathrooms', 'stories', 'mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'parking', 'prefarea']
+X_1b = df[features_1b].values
+
+# b) Split data
+X_train_1b, X_val_1b, y_train, y_val = train_test_split(X_1b, y, test_size=0.2, random_state=42)
+
+# c) Add intercept term
+X_train_1b = np.hstack((np.ones((X_train_1b.shape[0], 1)), X_train_1b))
+X_val_1b = np.hstack((np.ones((X_val_1b.shape[0], 1)), X_val_1b))
+
+# d) Run Gradient Descent
+theta_1b = np.zeros(X_train_1b.shape[1])
+theta_1b, train_cost_1b, val_cost_1b = gradient_descent(X_train_1b, y_train, X_val_1b, y_val, theta_1b, alpha, iterations)
+
+# e) Report results and plot
+print("Final Theta for Problem 1b:", theta_1b)
+plt.close('all')
+plt.figure(figsize=(10, 6))
+plt.plot(range(iterations), train_cost_1b, label='Training Loss')
+plt.plot(range(iterations), val_cost_1b, label='Validation Loss')
+plt.title('Problem 1b: Training vs. Validation Loss')
+plt.xlabel('Number of Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.show()
