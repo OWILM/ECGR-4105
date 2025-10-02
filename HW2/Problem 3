@@ -1,0 +1,177 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+def compute_cost(X, y, theta):
+    """
+    Computes the standard cost (Mean Squared Error / 2) for linear regression.
+    This is used for the VALIDATION set.
+    """
+    m = len(y)
+    if m == 0: return 0
+    predictions = X.dot(theta)
+    errors = np.subtract(predictions, y) 
+    sqrErrors = np.square(errors)
+    J = 1 / (2 * m) * np.sum(sqrErrors)
+    return J
+
+
+#  new compute cost with regularization
+
+def compute_cost_regularized(X, y, theta, lambda_reg):
+    """
+    Computes the regularized cost for the TRAINING set.
+    It adds a penalty for large theta values.
+    """
+    m = len(y)
+    if m == 0: return 0
+    
+    # Calculate the standard cost
+    standard_cost = compute_cost(X, y, theta)
+    
+    # Calculate the regularization penalty
+    # We do NOT penalize the intercept term, theta[0]
+    reg_penalty = (lambda_reg / (2 * m)) * np.sum(np.square(theta[1:]))
+    
+    return standard_cost + reg_penalty
+
+def gradient_descent_regularized(X_train, y_train, X_val, y_val, theta, alpha, iterations, lambda_reg):
+    """
+    Performs gradient descent with L2 regularization.
+    The update rule is modified to include a penalty term that "decays" the weights.
+    """
+    m = len(y_train)
+    train_cost_history = np.zeros(iterations)
+    val_cost_history = np.zeros(iterations)
+
+    for i in range(iterations):
+        predictions = X_train.dot(theta)
+        errors = np.subtract(predictions, y_train)
+        
+        # Calculate the standard gradient
+        gradient = (1 / m) * X_train.transpose().dot(errors)
+        
+        # Calculate the regularization term (penalty for the gradient)
+        # We do NOT penalize the intercept term theta[0], so its penalty is 0.
+        reg_term = (lambda_reg / m) * theta
+        reg_term[0] = 0
+        
+        # Combine the gradient with the regularization term
+        regularized_gradient = gradient + reg_term
+        
+        # Update theta using the new regularized gradient
+        theta -= alpha * regularized_gradient
+        
+        # Calculate and store costs
+        # The training cost uses the regularized function
+        train_cost_history[i] = compute_cost_regularized(X_train, y_train, theta, lambda_reg)
+        # The validation cost uses the ORIGINAL, unregularized function as per instructions
+        val_cost_history[i] = compute_cost(X_val, y_val, theta)
+
+    return theta, train_cost_history, val_cost_history
+
+
+# Load CSV
+here = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(here, "Housing.csv")
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"Housing.csv not found in the same folder as the script: {os.path.abspath(csv_path)}")
+
+df = pd.read_csv(csv_path)
+
+# Convert categorical 'yes'/'no' columns to binary 1/0
+categorical_cols = ['mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'prefarea']
+for col in categorical_cols:
+    df[col] = df[col].map({'yes': 1, 'no': 0})
+y = df['price'].values
+
+# Define feature sets for 3a (from 2a) and 3b (from 2b)
+features_a = ['area', 'bedrooms', 'bathrooms', 'stories', 'parking']
+features_b = ['area', 'bedrooms', 'bathrooms', 'stories', 'mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'parking', 'prefarea']
+
+X_a = df[features_a].values
+X_b = df[features_b].values
+
+# Split data for Problem 3a
+X_train_a_raw, X_val_a_raw, y_train_a, y_val_a = train_test_split(X_a, y, test_size=0.2, random_state=42)
+
+# Split data for Problem 3b
+X_train_b_raw, X_val_b_raw, y_train_b, y_val_b = train_test_split(X_b, y, test_size=0.2, random_state=42)
+
+#  Problem 3a: Repeat 2a with Regularization
+print("="*50)
+print("Executing Problem 3a (Regularization on 2a's best scaling)")
+print("="*50)
+
+# 1. Use Standardization 
+mean_a = np.mean(X_train_a_raw, axis=0)
+std_a = np.std(X_train_a_raw, axis=0)
+X_train_a_std = (X_train_a_raw - mean_a) / std_a
+X_val_a_std = (X_val_a_raw - mean_a) / std_a
+X_train_a_std = np.hstack((np.ones((X_train_a_std.shape[0], 1)), X_train_a_std))
+X_val_a_std = np.hstack((np.ones((X_val_a_std.shape[0], 1)), X_val_a_std))
+
+# 2. Run Regularized Gradient Descent
+theta_3a = np.zeros(X_train_a_std.shape[1])
+alpha = 0.01
+iterations = 1500
+lambda_reg = 10  # Regularization strength parameter (hyperparameter)
+
+theta_3a, train_cost_3a, val_cost_3a = gradient_descent_regularized(
+    X_train_a_std, y_train_a, X_val_a_std, y_val_a, theta_3a, alpha, iterations, lambda_reg)
+
+# 3. Report results and plot
+print(f"Final Validation Cost (MSE/2) for 3a: {val_cost_3a[-1]:.2f}")
+rmse_3a = np.sqrt(2 * val_cost_3a[-1])
+print(f"Final Validation RMSE for 3a: ${rmse_3a:,.2f}")
+
+plt.figure(figsize=(10, 6))
+plt.plot(range(iterations), train_cost_3a, label='Regularized Training Loss')
+plt.plot(range(iterations), val_cost_3a, label='Validation Loss')
+plt.title('Problem 3a: Loss with Regularization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+#  Problem 3b
+print("\n" + "="*50)
+print("Executing Problem 3b (Regularization on 2b's best scaling)")
+print("="*50)
+
+# 1. Use Standardization
+mean_b = np.mean(X_train_b_raw, axis=0)
+std_b = np.std(X_train_b_raw, axis=0)
+X_train_b_std = (X_train_b_raw - mean_b) / std_b
+X_val_b_std = (X_val_b_raw - mean_b) / std_b
+X_train_b_std = np.hstack((np.ones((X_train_b_std.shape[0], 1)), X_train_b_std))
+X_val_b_std = np.hstack((np.ones((X_val_b_std.shape[0], 1)), X_val_b_std))
+
+# 2. Run Regularized Gradient Descent
+theta_3b = np.zeros(X_train_b_std.shape[1])
+# Using a slightly larger alpha because scaling helps, and more features can sometimes
+# benefit from a slightly faster learning rate.
+alpha = 0.1 
+lambda_reg = 10 
+
+theta_3b, train_cost_3b, val_cost_3b = gradient_descent_regularized(
+    X_train_b_std, y_train_b, X_val_b_std, y_val_b, theta_3b, alpha, iterations, lambda_reg)
+
+# 3. Report results and plot
+print(f"Final Validation Cost (MSE/2) for 3b: {val_cost_3b[-1]:.2f}")
+rmse_3b = np.sqrt(2 * val_cost_3b[-1])
+print(f"Final Validation RMSE for 3b: ${rmse_3b:,.2f}")
+
+plt.figure(figsize=(10, 6))
+plt.plot(range(iterations), train_cost_3b, label='Regularized Training Loss')
+plt.plot(range(iterations), val_cost_3b, label='Validation Loss')
+plt.title('Problem 3b: Loss with Regularization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.show()
