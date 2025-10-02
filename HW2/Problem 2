@@ -1,1 +1,226 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
+#  Function Definitions from your HW1
+
+
+def compute_cost(X, y, theta):
+    """
+    Computes the cost (Mean Squared Error) for linear regression.
+    """
+    m = len(y)
+    if m == 0:
+        return 0
+    predictions = X.dot(theta)
+    errors = np.subtract(predictions, y) 
+    sqrErrors = np.square(errors)
+    # NOTE: The formula for MSE is 1/m * sum(sqrErrors). 
+    # The 1/(2*m) is a convention to simplify the derivative for gradient descent.
+    # To get the true MSE for RMSE calculation, we'll multiply by 2 later.
+    J = 1 / (2 * m) * np.sum(sqrErrors)
+    return J
+
+def gradient_descent(X_train, y_train, X_val, y_val, theta, alpha, iterations):
+    """
+    Performs gradient descent and calculates both training and validation loss.
+    """
+    m = len(y_train)
+    train_cost_history = np.zeros(iterations)
+    val_cost_history = np.zeros(iterations)
+
+    for i in range(iterations):
+        predictions = X_train.dot(theta)
+        errors = np.subtract(predictions, y_train)
+        sum_delta = (alpha / m) * X_train.transpose().dot(errors)
+        theta -= sum_delta
+        
+        # Calculate and store cost for both training and validation sets
+        train_cost_history[i] = compute_cost(X_train, y_train, theta)
+        val_cost_history[i] = compute_cost(X_val, y_val, theta)
+
+    return theta, train_cost_history, val_cost_history
+
+# =========================================================================
+#  1. Load and Preprocess Data
+# =========================================================================
+
+# Load CSV from the same folder as this script (HW2). Do not fall back to parent.
+here = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(here, "Housing.csv")
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"Housing.csv not found in the same folder as the script: {os.path.abspath(csv_path)}")
+
+df = pd.read_csv(csv_path)
+
+# Convert categorical 'yes' or 'no' columns to binary
+categorical_cols = ['mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'prefarea']
+for col in categorical_cols:
+    df[col] = df[col].map({'yes': 1, 'no': 0})
+
+# Get price as the target variable
+y = df['price'].values
+
+
+#  Problem 1a & 1b Baseline
+
+features_1a = ['area', 'bedrooms', 'bathrooms', 'stories', 'parking']
+X_1a = df[features_1a].values
+X_train_1a_raw, X_val_1a_raw, y_train, y_val = train_test_split(X_1a, y, test_size=0.2, random_state=42)
+
+X_train_1a_base = np.hstack((np.ones((X_train_1a_raw.shape[0], 1)), X_train_1a_raw))
+X_val_1a_base = np.hstack((np.ones((X_val_1a_raw.shape[0], 1)), X_val_1a_raw))
+
+theta_1a = np.zeros(X_train_1a_base.shape[1])
+alpha = 1e-7 
+iterations = 1500
+theta_1a, train_cost_1a_base, val_cost_1a_base = gradient_descent(X_train_1a_base, y_train, X_val_1a_base, y_val, theta_1a, alpha, iterations)
+
+print(f"Final Training Cost for Problem 1a (Baseline): {train_cost_1a_base[-1]:.2f}")
+
+
+features_1b = ['area', 'bedrooms', 'bathrooms', 'stories', 'mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'parking', 'prefarea']
+X_1b = df[features_1b].values
+X_train_1b_raw, X_val_1b_raw, y_train, y_val = train_test_split(X_1b, y, test_size=0.2, random_state=42)
+
+X_train_1b_base = np.hstack((np.ones((X_train_1b_raw.shape[0], 1)), X_train_1b_raw))
+X_val_1b_base = np.hstack((np.ones((X_val_1b_raw.shape[0], 1)), X_val_1b_raw))
+
+theta_1b = np.zeros(X_train_1b_base.shape[1])
+theta_1b, train_cost_1b_base, val_cost_1b_base = gradient_descent(X_train_1b_base, y_train, X_val_1b_base, y_val, theta_1b, alpha, iterations)
+
+print(f"Final Training Cost for Problem 1b (Baseline): {train_cost_1b_base[-1]:.2f}\n")
+
+
+
+#  Problem 2a: Repeat 1a with Input Scaling
+
+X_train_1a_raw, X_val_1a_raw, y_train, y_val = train_test_split(X_1a, y, test_size=0.2, random_state=42)
+
+# --- 2a: Input Standardization ---
+mean = np.mean(X_train_1a_raw, axis=0)
+std = np.std(X_train_1a_raw, axis=0)
+X_train_1a_std = (X_train_1a_raw - mean) / std
+X_val_1a_std = (X_val_1a_raw - mean) / std
+X_train_1a_std = np.hstack((np.ones((X_train_1a_std.shape[0], 1)), X_train_1a_std))
+X_val_1a_std = np.hstack((np.ones((X_val_1a_std.shape[0], 1)), X_val_1a_std))
+
+theta_2a_std = np.zeros(X_train_1a_std.shape[1])
+alpha_scaled = 0.01
+theta_2a_std, train_cost_2a_std, val_cost_2a_std = gradient_descent(X_train_1a_std, y_train, X_val_1a_std, y_val, theta_2a_std, alpha_scaled, iterations)
+
+print(f"Final Training Cost (MSE/2) for 2a (Standardization): {train_cost_2a_std[-1]:.2f}")
+
+# --- 2a: Input Normalization ---
+min_val = np.min(X_train_1a_raw, axis=0)
+max_val = np.max(X_train_1a_raw, axis=0)
+X_train_1a_norm = (X_train_1a_raw - min_val) / (max_val - min_val)
+X_val_1a_norm = (X_val_1a_raw - min_val) / (max_val - min_val)
+X_train_1a_norm = np.hstack((np.ones((X_train_1a_norm.shape[0], 1)), X_train_1a_norm))
+X_val_1a_norm = np.hstack((np.ones((X_val_1a_norm.shape[0], 1)), X_val_1a_norm))
+
+theta_2a_norm = np.zeros(X_train_1a_norm.shape[1])
+theta_2a_norm, train_cost_2a_norm, val_cost_2a_norm = gradient_descent(X_train_1a_norm, y_train, X_val_1a_norm, y_val, theta_2a_norm, alpha_scaled, iterations)
+
+print(f"Final Training Cost (MSE/2) for 2a (Normalization): {train_cost_2a_norm[-1]:.2f}")
+
+# --- NEW: RMSE Calculation for 2a ---
+# The cost function J is MSE/2. To get true MSE, we multiply by 2.
+# Then, we take the square root to get RMSE.
+rmse_2a_std = np.sqrt(2 * train_cost_2a_std[-1])
+rmse_2a_norm = np.sqrt(2 * train_cost_2a_norm[-1])
+
+print(f"\n--- Interpreting 2a Results ---")
+print(f"Standardization RMSE: ${rmse_2a_std:,.2f}")
+print(f"Normalization RMSE:   ${rmse_2a_norm:,.2f}")
+# COMMENT: RMSE (Root Mean Squared Error) is used because it translates the
+# abstract cost value back into the original units of the target variable 
+# (in this case, dollars). It represents the typical error of the model's 
+# price predictions, making it much easier to understand the model's
+# real-world performance. A lower RMSE is better.
+
+
+# --- Plotting for 2a ---
+plt.figure(figsize=(14, 6))
+plt.subplot(1, 2, 1)
+plt.plot(range(iterations), train_cost_2a_std, label='Training Loss')
+plt.plot(range(iterations), val_cost_2a_std, label='Validation Loss')
+plt.title('Problem 2a: Loss with Input Standardization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.subplot(1, 2, 2)
+plt.plot(range(iterations), train_cost_2a_norm, label='Training Loss')
+plt.plot(range(iterations), val_cost_2a_norm, label='Validation Loss')
+plt.title('Problem 2a: Loss with Input Normalization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+#  Problem 2b: Repeat 1b with Input Scaling
+
+# --- 2b: Input Standardization ---
+mean_b = np.mean(X_train_1b_raw, axis=0)
+std_b = np.std(X_train_1b_raw, axis=0)
+X_train_1b_std = (X_train_1b_raw - mean_b) / std_b
+X_val_1b_std = (X_val_1b_raw - mean_b) / std_b
+X_train_1b_std = np.hstack((np.ones((X_train_1b_std.shape[0], 1)), X_train_1b_std))
+X_val_1b_std = np.hstack((np.ones((X_val_1b_std.shape[0], 1)), X_val_1b_std))
+
+theta_2b_std = np.zeros(X_train_1b_std.shape[1])
+theta_2b_std, train_cost_2b_std, val_cost_2b_std = gradient_descent(X_train_1b_std, y_train, X_val_1b_std, y_val, theta_2b_std, alpha_scaled, iterations)
+
+print(f"Final Training Cost (MSE/2) for 2b (Standardization): {train_cost_2b_std[-1]:.2f}")
+
+# --- 2b: Input Normalization ---
+min_val_b = np.min(X_train_1b_raw, axis=0)
+max_val_b = np.max(X_train_1b_raw, axis=0)
+X_train_1b_norm = (X_train_1b_raw - min_val_b) / (max_val_b - min_val_b)
+X_val_1b_norm = (X_val_1b_raw - min_val_b) / (max_val_b - min_val_b)
+X_train_1b_norm = np.hstack((np.ones((X_train_1b_norm.shape[0], 1)), X_train_1b_norm))
+X_val_1b_norm = np.hstack((np.ones((X_val_1b_norm.shape[0], 1)), X_val_1b_norm))
+
+theta_2b_norm = np.zeros(X_train_1b_norm.shape[1])
+theta_2b_norm, train_cost_2b_norm, val_cost_2b_norm = gradient_descent(X_train_1b_norm, y_train, X_val_1b_norm, y_val, theta_2b_norm, alpha_scaled, iterations)
+
+print(f"Final Training Cost (MSE/2) for 2b (Normalization): {train_cost_2b_norm[-1]:.2f}")
+
+# --- NEW: RMSE Calculation for 2b ---
+rmse_2b_std = np.sqrt(2 * train_cost_2b_std[-1])
+rmse_2b_norm = np.sqrt(2 * train_cost_2b_norm[-1])
+
+print(f"\n--- Interpreting 2b Results ---")
+print(f"Standardization RMSE: ${rmse_2b_std:,.2f}")
+print(f"Normalization RMSE:   ${rmse_2b_norm:,.2f}")
+# COMMENT: Again, we convert the final cost to RMSE. This allows us to directly
+# compare the models' average prediction error in dollars and see the 
+# performance improvement from adding more features in problem 2b vs 2a.
+
+
+# --- Plotting for 2b ---
+plt.figure(figsize=(14, 6))
+plt.subplot(1, 2, 1)
+plt.plot(range(iterations), train_cost_2b_std, label='Training Loss')
+plt.plot(range(iterations), val_cost_2b_std, label='Validation Loss')
+plt.title('Problem 2b: Loss with Input Standardization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.subplot(1, 2, 2)
+plt.plot(range(iterations), train_cost_2b_norm, label='Training Loss')
+plt.plot(range(iterations), val_cost_2b_norm, label='Validation Loss')
+plt.title('Problem 2b: Loss with Input Normalization')
+plt.xlabel('Iterations')
+plt.ylabel('Cost (J)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
