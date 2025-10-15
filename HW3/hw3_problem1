@@ -1,1 +1,23 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+# A function to split data into training and testing sets
+from sklearn.model_selection import train_test_split
 
+# A tool to standardize features (e.g., mean=0, variance=1)
+from sklearn.preprocessing import StandardScaler
+
+# The logistic regression model for classification
+from sklearn.linear_model import LogisticRegression
+
+# Functions to evaluate model performance
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+import seaborn as sns
+
+data = pd.read_csv("ECGR-4105/HW3/diabetes.csv")
+
+
+# View first few rows
+print(data.head())
