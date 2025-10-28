@@ -1,1 +1,21 @@
+# Use the cancer dataset to build an SVM classifier to classify the type of cancer 
+# (Malignant vs. benign). Plot your classification accuracy, precision, and recall. 
+# Explore different kernel tricks to capture non-linearities within your data. 
+# Plot the results and compare the accuracies for different kernels. 
+# Compare your results against the logistic regression that you have done in homework 3.
+# Make sure to explain and elaborate your results.
 
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, log_loss
+import seaborn as sns; sns.set() #set function is deprecated -> set_theme()
+from sklearn.datasets import load_breast_cancer
+from scipy import stats
+
+#80 20 split
+breast = load_breast_cancer()
+breast_data = breast.data
