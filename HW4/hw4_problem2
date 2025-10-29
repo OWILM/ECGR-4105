@@ -10,10 +10,67 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, log_loss
-import seaborn as sns; sns.set() #set function is deprecated -> set_theme()
-from scipy import stats
+from sklearn.svm import SVR
+from sklearn.metrics import mean_squared_error, r2_score
+import seaborn as sns; sns.set_theme()
 
-#80 20 split
-data = pd.read_csv("ECGR-4105/HW4/Housing.csv")
+# Load dataset 
+dataset = pd.read_csv('ECGR-4105/HW4/Housing.csv')
+
+# Convert categorical 'yes'/'no' columns to binary 1/0
+categorical_cols = ['mainroad', 'guestroom', 'basement', 
+                    'hotwaterheating', 'airconditioning', 'prefarea']
+for col in categorical_cols:
+    dataset[col] = dataset[col].map({'yes': 1, 'no': 0})
+
+# Select features and target
+X = dataset[['area', 'bedrooms', 'bathrooms', 'stories', 'mainroad','guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'parking', 'prefarea']].values
+Y = dataset['price'].values
+
+
+# Split dataset 80% training set and 20% validation set
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# Feature scaling
+scaler_X = StandardScaler()
+scaler_Y = StandardScaler()
+
+X_train_scaled = scaler_X.fit_transform(X_train)
+X_test_scaled = scaler_X.transform(X_test)
+
+Y_train_scaled = scaler_Y.fit_transform(Y_train.reshape(-1, 1)).ravel()
+Y_test_scaled = scaler_Y.transform(Y_test.reshape(-1, 1)).ravel()
+
+# Train SVR models with different kernels
+kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+results = {'Kernel': [], 'MSE': [], 'R2_Score': []}
+
+for kernel in kernels:
+    model = SVR(kernel=kernel, C=1.0, gamma='scale')
+    model.fit(X_train_scaled, Y_train_scaled)
+    Y_pred_scaled = model.predict(X_test_scaled)
+
+    # Inverse transform predictions
+    Y_pred = scaler_Y.inverse_transform(Y_pred_scaled.reshape(-1, 1)).ravel()
+
+    mse = mean_squared_error(Y_test, Y_pred)
+    r2 = r2_score(Y_test, Y_pred)
+
+    results['Kernel'].append(kernel)
+    results['MSE'].append(mse)
+    results['R2_Score'].append(r2)
+
+# Convert results to DataFrame
+df_results = pd.DataFrame(results)
+
+# Plot MSE and R_Squared
+df_results.plot(x='Kernel', y=['MSE', 'R2_Score'], kind='bar', figsize=(8,5))
+plt.title('SVR Regression Performance by Kernel')
+plt.ylabel('Score')
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+plt.tight_layout()
+plt.show()
+
+# Display results
+print("\nSVR Kernel Performance Comparison")
+print(df_results.round(4))
