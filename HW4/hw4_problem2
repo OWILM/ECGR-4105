@@ -41,36 +41,25 @@ X_test_scaled = scaler_X.transform(X_test)
 Y_train_scaled = scaler_Y.fit_transform(Y_train.reshape(-1, 1)).ravel()
 Y_test_scaled = scaler_Y.transform(Y_test.reshape(-1, 1)).ravel()
 
-# Train SVR models with different kernels
+# Train and plot SVR models with different kernels
 kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-results = {'Kernel': [], 'MSE': [], 'R2_Score': []}
 
-for kernel in kernels:
-    model = SVR(kernel=kernel, C=1.0, gamma='scale')
+plt.figure(figsize=(12, 8))
+for i, kernel in enumerate(kernels, 1):
+    model = SVR(kernel=kernel)
     model.fit(X_train_scaled, Y_train_scaled)
-    Y_pred_scaled = model.predict(X_test_scaled)
-
-    # Inverse transform predictions
-    Y_pred = scaler_Y.inverse_transform(Y_pred_scaled.reshape(-1, 1)).ravel()
+    Y_pred = scaler_Y.inverse_transform(model.predict(X_test_scaled).reshape(-1, 1)).ravel()
 
     mse = mean_squared_error(Y_test, Y_pred)
     r2 = r2_score(Y_test, Y_pred)
 
-    results['Kernel'].append(kernel)
-    results['MSE'].append(mse)
-    results['R2_Score'].append(r2)
+    # Scatter plot for each kernel
+    plt.subplot(2, 2, i)
+    plt.scatter(Y_test, Y_pred, alpha=0.6, color='orange', edgecolor='k')
+    plt.plot([Y_test.min(), Y_test.max()], [Y_test.min(), Y_test.max()], 'r--')
+    plt.xlabel('Actual Price')
+    plt.ylabel('Predicted Price')
+    plt.title(f'SVR ({kernel} kernel)\nR² = {r2:.3f}, MSE = {mse:.2e}')
 
-# Convert results to DataFrame
-df_results = pd.DataFrame(results)
-
-# Plot MSE and R_Squared
-df_results.plot(x='Kernel', y=['MSE', 'R2_Score'], kind='bar', figsize=(8,5))
-plt.title('SVR Regression Performance by Kernel')
-plt.ylabel('Score')
-plt.grid(axis='y', linestyle='--', alpha=0.6)
 plt.tight_layout()
 plt.show()
-
-# Display results
-print("\nSVR Kernel Performance Comparison")
-print(df_results.round(4))
