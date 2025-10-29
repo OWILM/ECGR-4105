@@ -11,11 +11,60 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, log_loss
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 import seaborn as sns; sns.set() #set function is deprecated -> set_theme()
 from sklearn.datasets import load_breast_cancer
 from scipy import stats
+from sklearn.svm import SVC
 
-#80 20 split
-breast = load_breast_cancer()
-breast_data = breast.data
+
+# load dataset using sklearn
+dataset = load_breast_cancer()
+
+X = dataset.data
+Y = dataset.target
+
+# The dataset has 30 features and the target is binary (0: Malignant, 1: Benign)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# Feature scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# Train SVMs with different kernels
+kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+results = {'Kernel': [], 'Accuracy': [], 'Precision': [], 'Recall': []}
+
+for kernel in kernels:
+    model = SVC(kernel=kernel, C=1.0, gamma='scale', random_state=0)
+    model.fit(X_train_scaled, Y_train)
+    y_pred = model.predict(X_test_scaled)
+
+    acc = accuracy_score(Y_test, y_pred)
+    prec = precision_score(Y_test, y_pred)
+    rec = recall_score(Y_test, y_pred)
+    
+    results['Kernel'].append(kernel)
+    results['Accuracy'].append(acc)
+    results['Precision'].append(prec)
+    results['Recall'].append(rec)
+
+# Convert results to DataFrame
+df_results = pd.DataFrame(results)
+
+
+# Plot accuracy, precision, and recall
+df_results.plot(x='Kernel', y=['Accuracy', 'Precision', 'Recall'], kind='bar', figsize=(8,5))
+plt.ylim(0.8, 1.05)
+plt.title('SVM Performance by Kernel')
+plt.ylabel('Score')
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+plt.tight_layout()
+plt.show()
+
+
+# Display results
+print("\nSVM Kernel Performance Comparison")
+print(df_results.round(4))
