@@ -53,6 +53,9 @@ for i, kernel in enumerate(kernels, 1):
     mse = mean_squared_error(Y_test, Y_pred)
     r2 = r2_score(Y_test, Y_pred)
 
+    # Print MSE and R2 for this kernel
+    print(f"Kernel: {kernel:6} -> MSE: {mse:.4f}, R2: {r2:.4f}")
+
     # Scatter plot for each kernel
     plt.subplot(2, 2, i)
     plt.scatter(Y_test, Y_pred, alpha=0.6, color='orange', edgecolor='k')
