@@ -1,1 +1,140 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, log_loss
+import seaborn as sns
+from sklearn.linear_model import SGDClassifier
+from sklearn.datasets import load_breast_cancer
 
+# load dataset using sklearn
+dataset = load_breast_cancer()
+
+X = dataset.data
+Y = dataset.target
+# The dataset has 30 features and the target is binary (0: Malignant, 1: Benign)
+print(f"Shape of feature data (X): {X.shape}")
+print(f"Shape of target data (Y): {Y.shape}")
+
+
+# --- Common Data Preparation Steps ---
+# Split the Data (80% train, 20% test)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# Scaling and Standardization
+sc_X = StandardScaler()
+X_train_scaled = sc_X.fit_transform(X_train)
+X_test_scaled = sc_X.transform(X_test)
+
+
+# ==============================================================================
+# a) Logistic Regression without Weight Penalty
+# ==============================================================================
+print("\n" + "="*60)
+print("Part a: Standard Logistic Regression")
+print("="*60)
+
+# Logistic Regression Model
+classifier_standard = LogisticRegression(random_state=0)
+classifier_standard.fit(X_train_scaled, Y_train)
+
+# Plot Training Results (Loss and Accuracy over Iterations)
+# Using SGDClassifier with 'log_loss' to simulate this
+sgd_classifier = SGDClassifier(loss='log_loss', random_state=0)
+n_iterations = 1000
+train_losses = []
+train_accuracies = []
+
+for iteration in range(n_iterations):
+    sgd_classifier.partial_fit(X_train_scaled, Y_train, classes=np.unique(Y_train))
+    y_train_pred_proba = sgd_classifier.predict_proba(X_train_scaled)
+    loss = log_loss(Y_train, y_train_pred_proba)
+    train_losses.append(loss)
+    y_train_pred = sgd_classifier.predict(X_train_scaled)
+    accuracy = accuracy_score(Y_train, y_train_pred)
+    train_accuracies.append(accuracy)
+
+# Plotting the training history
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.plot(range(n_iterations), train_losses, label='Training Loss')
+plt.title('Loss over Iterations (Standard Model)')
+plt.xlabel('Iterations')
+plt.ylabel('Log Loss')
+plt.grid(True)
+
+plt.subplot(1, 2, 2)
+plt.plot(range(n_iterations), train_accuracies, label='Training Accuracy', color='orange')
+plt.title('Accuracy over Iterations (Standard Model)')
+plt.xlabel('Iterations')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Report Results on Test Set
+Y_pred_standard = classifier_standard.predict(X_test_scaled)
+
+accuracy = accuracy_score(Y_test, Y_pred_standard)
+precision = precision_score(Y_test, Y_pred_standard)
+recall = recall_score(Y_test, Y_pred_standard)
+f1 = f1_score(Y_test, Y_pred_standard)
+
+print("\n--- Results for Standard Model ---")
+print(f"Accuracy:  {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall:    {recall:.4f}")
+print(f"F1 Score:  {f1:.4f}")
+print("----------------------------------")
+
+# Plot the Confusion Matrix
+cnf_matrix_standard = confusion_matrix(Y_test, Y_pred_standard)
+plt.figure(figsize=(8, 6))
+sns.heatmap(pd.DataFrame(cnf_matrix_standard), annot=True, cmap="YlGnBu", fmt='g',
+            xticklabels=cancer.target_names, yticklabels=cancer.target_names)
+plt.title('Confusion Matrix (Standard Model)', y=1.1)
+plt.ylabel('Actual Label')
+plt.xlabel('Predicted Label')
+plt.show()
+
+
+# ==============================================================================
+# b) Logistic Regression with L2 Weight Penalty
+# ==============================================================================
+print("\n" + "="*60)
+print("Part b: Logistic Regression with Weight Penalty")
+print("="*60)
+
+# A weight penalty (regularization) helps prevent overfitting by penalizing
+# large model coefficients. We use 'penalty="l2"' (the default) and set C
+# to a smaller value. A smaller C means a *stronger* penalty.
+classifier_penalty = LogisticRegression(penalty='l2', C=0.1, random_state=0)
+classifier_penalty.fit(X_train_scaled, Y_train)
+
+# Report Results on Test Set for the penalized model
+Y_pred_penalty = classifier_penalty.predict(X_test_scaled)
+
+accuracy_p = accuracy_score(Y_test, Y_pred_penalty)
+precision_p = precision_score(Y_test, Y_pred_penalty)
+recall_p = recall_score(Y_test, Y_pred_penalty)
+f1_p = f1_score(Y_test, Y_pred_penalty)
+
+print("\n--- Results for Model with L2 Penalty (C=0.1) ---")
+print(f"Accuracy:  {accuracy_p:.4f}")
+print(f"Precision: {precision_p:.4f}")
+print(f"Recall:    {recall_p:.4f}")
+print(f"F1 Score:  {f1_p:.4f}")
+print("-------------------------------------------------")
+
+# Plot the Confusion Matrix for the penalized model
+cnf_matrix_penalty = confusion_matrix(Y_test, Y_pred_penalty)
+plt.figure(figsize=(8, 6))
+sns.heatmap(pd.DataFrame(cnf_matrix_penalty), annot=True, cmap="magma", fmt='g',
+            xticklabels=cancer.target_names, yticklabels=cancer.target_names)
+plt.title('Confusion Matrix (Model with L2 Penalty)', y=1.1)
+plt.ylabel('Actual Label')
+plt.xlabel('Predicted Label')
+plt.show()
