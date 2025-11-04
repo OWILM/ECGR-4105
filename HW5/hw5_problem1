@@ -1,13 +1,13 @@
 # In our temperature prediction example, let’s change our model to a nonlinear system. Consider the following description for our model:
  
-w2 * t_u ** 2 + w1 * t_u + b.
+# w2 * t_u ** 2 + w1 * t_u + b.
  
-1.a Modify the training loop properly to accommodate this redefinition. 
+# 1.a Modify the training loop properly to accommodate this redefinition. 
  
-1.b Use 5000 epochs for your training. Explore different learning rates from 0.1 to 0.0001 (you need four separate trainings). 
+# 1.b Use 5000 epochs for your training. Explore different learning rates from 0.1 to 0.0001 (you need four separate trainings). 
 Report your loss for every 500 epochs per training.
  
-1.c Pick the best non-linear model and compare your final best loss against the linear model that we did during the lecture. 
+# 1.c Pick the best non-linear model and compare your final best loss against the linear model that we did during the lecture. 
 For this, visualize the non-linear model against the linear model over the input dataset, as we did during the lecture. 
 Is the actual result better or worse than our baseline linear model?
 
