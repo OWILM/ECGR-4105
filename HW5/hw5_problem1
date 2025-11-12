@@ -1,13 +1,144 @@
-# In our temperature prediction example, let’s change our model to a nonlinear system. Consider the following description for our model:
- 
+#In our temperature prediction example, let’s change our model to a nonlinear system. 
+# Consider the following description for our model:
 # w2 * t_u ** 2 + w1 * t_u + b.
- 
+
 # 1.a Modify the training loop properly to accommodate this redefinition. 
- 
-# 1.b Use 5000 epochs for your training. Explore different learning rates from 0.1 to 0.0001 (you need four separate trainings). 
-Report your loss for every 500 epochs per training.
- 
+# 1.b Use 5000 epochs for your training. Explore different learning rates from 0.1 to 0.0001 
+# (you need four separate trainings). Report your loss for every 500 epochs per training.
 # 1.c Pick the best non-linear model and compare your final best loss against the linear model that we did during the lecture. 
-For this, visualize the non-linear model against the linear model over the input dataset, as we did during the lecture. 
-Is the actual result better or worse than our baseline linear model?
+# For this, visualize the non-linear model against the linear model over the input dataset, as we did during the lecture. 
+# Is the actual result better or worse than our baseline linear model?
+
+# Linear Model: t_c = w * t_u + b
+ 
+import torch
+import torch.optim as optim
+import matplotlib.pyplot as plt
+
+# Data 
+t_c = [0.5, 14.0, 15.0, 28.0, 11.0, 8.0, 3.0, -4.0, 6.0, 13.0, 21.0]
+t_u = [35.7, 55.9, 58.2, 81.9, 56.3, 48.9, 33.9, 21.8, 48.4, 60.4, 68.4]
+t_c = torch.tensor(t_c)
+t_u = torch.tensor(t_u)
+
+
+# Nonlinear model: w2 * t_u ** 2 + w1 * t_u + b
+def model(t_u, w2, w1, b):
+    return w2 * t_u ** 2 + w1 * t_u + b
+
+# Loss function 
+def loss_fn(t_p, t_c):
+    squared_diffs = (t_p - t_c)**2
+    return squared_diffs.mean()
+
+
+# 1.b
+
+learning_rates = [0.1, 0.01, 0.001, 0.0001]
+results = {}
+
+for lr in learning_rates:
+    print(f"\n{'='*60}")
+    print(f"Training with Learning Rate: {lr}")
+    print(f"{'='*60}")
+    
+    # Initialize parameters 
+    params = torch.tensor([1e-4, 1.0, 0.0], requires_grad=True)
+
+    # Create optimizer
+    optimizer = optim.SGD([params], lr=lr)
+    
+    # Training loop 
+    for epoch in range(1, 5001):
+        # Forward pass
+        t_p = model(t_u, *params)
+        loss = loss_fn(t_p, t_c)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # Report every 500 epochs
+        if epoch % 500 == 0:
+            print(f"Epoch {epoch:4d}, Loss {loss.item():.4f}, "
+                  f"Params: w2={params[0].item():.6f}, w1={params[1].item():.4f}, b={params[2].item():.4f}")
+    
+    # Store results
+    results[lr] = {
+        'params': params.detach().clone(),
+        'final_loss': loss.item()
+    }
+    
+    print(f"Final Loss: {loss.item():.4f}")
+
+
+# 1.c
+
+# Train linear model 
+print(f"\n{'='*60}")
+print(f"Training Linear Model (Baseline)")
+print(f"{'='*60}")
+
+# Linear model definition 
+def linear_model(t_u, w, b):
+    return w * t_u + b
+
+# Initialize parameters 
+linear_params = torch.tensor([1.0, 0.0], requires_grad=True)
+
+# Optimizer
+linear_optimizer = optim.SGD([linear_params], lr=1e-2)
+
+# Training loop
+for epoch in range(1, 5001):
+    t_p = linear_model(t_u, *linear_params)
+    loss = loss_fn(t_p, t_c)
+    
+    linear_optimizer.zero_grad()
+    loss.backward()
+    linear_optimizer.step()
+    
+    if epoch % 500 == 0:
+        print(f"Epoch {epoch:4d}, Loss {loss.item():.4f}")
+
+linear_loss = loss.item()
+print(f"Linear Model Final Loss: {linear_loss:.4f}")
+
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Generate prediction range
+t_u_range = torch.linspace(t_u.min(), t_u.max(), 100)
+
+# Plot Nonlinear Model
+with torch.no_grad():
+    t_p_nonlinear = model(t_u_range, *best_params)
+
+axes[0].scatter(t_u.numpy(), t_c.numpy(), label='Actual data', color='blue', s=80, alpha=0.6)
+axes[0].plot(t_u_range.numpy(), t_p_nonlinear.numpy(), 'r-', 
+             label=f'Nonlinear model (loss={best_loss:.2f})', linewidth=2)
+axes[0].set_xlabel('t_u (measurement)')
+axes[0].set_ylabel('t_c (Celsius)')
+axes[0].set_title(f'Nonlinear Model: w2*t_u² + w1*t_u + b\nLR={best_lr}')
+axes[0].legend()
+axes[0].grid(True, alpha=0.3)
+
+# Plot Linear Model
+with torch.no_grad():
+    t_p_linear = linear_model(t_u_range, *linear_params)
+
+axes[1].scatter(t_u.numpy(), t_c.numpy(), label='Actual data', color='blue', s=80, alpha=0.6)
+axes[1].plot(t_u_range.numpy(), t_p_linear.numpy(), 'g-', 
+             label=f'Linear model (loss={linear_loss:.2f})', linewidth=2)
+axes[1].set_xlabel('t_u (measurement)')
+axes[1].set_ylabel('t_c (Celsius)')
+axes[1].set_title('Linear Model: w*t_u + b')
+axes[1].legend()
+axes[1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+
 
