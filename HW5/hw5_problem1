@@ -76,9 +76,7 @@ for lr in learning_rates:
 # 1.c
 
 # Train linear model 
-print(f"\n{'='*60}")
-print(f"Training Linear Model (Baseline)")
-print(f"{'='*60}")
+print(f"Training Linear Model")
 
 # Linear model definition 
 def linear_model(t_u, w, b):
