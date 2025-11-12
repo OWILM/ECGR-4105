@@ -1,1 +1,191 @@
+import torch
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
+
+# 2.a: Data Preprocessing
+
+# Load dataset
+dataset = pd.read_csv('Housing.csv')
+
+# Select features: area, bedrooms, bathrooms, stories, parking
+X = dataset[['area', 'bedrooms', 'bathrooms', 'stories', 'parking']].values
+Y = dataset['price'].values
+
+# Split dataset 80% training and 20% validation
+X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# Normalization
+scaler_X = StandardScaler()
+scaler_Y = StandardScaler()
+
+X_train_scaled = scaler_X.fit_transform(X_train)
+X_val_scaled = scaler_X.transform(X_val)
+
+Y_train_scaled = scaler_Y.fit_transform(Y_train.reshape(-1, 1)).ravel()
+Y_val_scaled = scaler_Y.transform(Y_val.reshape(-1, 1)).ravel()
+
+# Convert to  tensors
+X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
+Y_train_tensor = torch.tensor(Y_train_scaled, dtype=torch.float32)
+X_val_tensor = torch.tensor(X_val_scaled, dtype=torch.float32)
+Y_val_tensor = torch.tensor(Y_val_scaled, dtype=torch.float32)
+
+print("Dataset loaded and preprocessed!")
+print(f"Training samples: {len(X_train)}")
+print(f"Validation samples: {len(X_val)}")
+print(f"Number of features: {X_train.shape[1]}")
+
+# Model and Loss Functions (from lecture)
+
+# Linear model: U = W5*X5 + W4*X4 + W3*X3 + W2*X2 + W1*X1 + B
+def model(X, params):
+    """
+    Linear regression model
+    X: input features (N x 5)
+    params: weights and bias (6 parameters: w5, w4, w3, w2, w1, b)
+    """
+    weights = params[:5]  # First 5 parameters are weights
+    bias = params[5]      # Last parameter is bias
+    return torch.matmul(X, weights) + bias
+
+# Loss function (Mean Squared Error)
+def loss_fn(predictions, targets):
+    squared_diffs = (predictions - targets) ** 2
+    return squared_diffs.mean()
+
+# 2.b: Training with different learning rates
+
+learning_rates = [0.1, 0.01, 0.001, 0.0001]
+results = {}
+
+for lr in learning_rates:
+    print(f"Training with Learning Rate: {lr}")
+    
+    
+    # Initialize parameters (6 total: 5 weights + 1 bias)
+    params = torch.zeros(6, requires_grad=True)
+    
+    # Create Optimizer 
+    optimizer = optim.SGD([params], lr=lr)
+    
+    # Store losses for plotting
+    train_losses = []
+    val_losses = []
+    
+    # Training loop
+    for epoch in range(1, 5001):
+        # Forward pass
+        predictions = model(X_train_tensor, params)
+        train_loss = loss_fn(predictions, Y_train_tensor)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        train_loss.backward()
+        optimizer.step()
+        
+        # Validation loss (no gradient computation)
+        with torch.no_grad():
+            val_predictions = model(X_val_tensor, params)
+            val_loss = loss_fn(val_predictions, Y_val_tensor)
+        
+        # Store losses
+        train_losses.append(train_loss.item())
+        val_losses.append(val_loss.item())
+        
+        # Report every 500 epochs
+        if epoch % 500 == 0:
+            print(f"Epoch {epoch:4d} | Train Loss: {train_loss.item():.4f} | "
+                  f"Val Loss: {val_loss.item():.4f}")
+    
+    # Store results
+    results[lr] = {
+        'params': params.detach().clone(),
+        'train_loss': train_loss.item(),
+        'val_loss': val_loss.item(),
+        'train_losses': train_losses,
+        'val_losses': val_losses
+    }
+    
+    print(f"Final Train Loss: {train_loss.item():.4f}")
+    print(f"Final Validation Loss: {val_loss.item():.4f}")
+
+
+# Plot 1: Training curves for all learning rates
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+# Training and validation loss curves
+ax1 = axes[0, 0]
+for lr in learning_rates:
+    ax1.plot(results[lr]['train_losses'], label=f'LR={lr} (train)', alpha=0.7)
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Loss')
+ax1.set_title('Training Loss for Different Learning Rates')
+ax1.legend()
+ax1.grid(True, alpha=0.3)
+ax1.set_yscale('log')
+
+ax2 = axes[0, 1]
+for lr in learning_rates:
+    ax2.plot(results[lr]['val_losses'], label=f'LR={lr} (val)', alpha=0.7, linestyle='--')
+ax2.set_xlabel('Epoch')
+ax2.set_ylabel('Loss')
+ax2.set_title('Validation Loss for Different Learning Rates')
+ax2.legend()
+ax2.grid(True, alpha=0.3)
+ax2.set_yscale('log')
+
+# Plot 2: Best model predictions vs actual (training set)
+ax3 = axes[1, 0]
+with torch.no_grad():
+    train_pred_scaled = model(X_train_tensor, best_params).numpy()
+    # Inverse transform to original scale
+    train_pred = scaler_Y.inverse_transform(train_pred_scaled.reshape(-1, 1)).ravel()
+
+ax3.scatter(Y_train, train_pred, alpha=0.5, s=20, edgecolor='k')
+ax3.plot([Y_train.min(), Y_train.max()], [Y_train.min(), Y_train.max()], 'r--', lw=2)
+ax3.set_xlabel('Actual Price')
+ax3.set_ylabel('Predicted Price')
+ax3.set_title(f'Training Set: Actual vs Predicted\nLR={best_lr}')
+ax3.grid(True, alpha=0.3)
+
+# Plot 3: Best model predictions vs actual (validation set)
+ax4 = axes[1, 1]
+with torch.no_grad():
+    val_pred_scaled = model(X_val_tensor, best_params).numpy()
+    # Inverse transform to original scale
+    val_pred = scaler_Y.inverse_transform(val_pred_scaled.reshape(-1, 1)).ravel()
+
+ax4.scatter(Y_val, val_pred, alpha=0.5, s=20, color='orange', edgecolor='k')
+ax4.plot([Y_val.min(), Y_val.max()], [Y_val.min(), Y_val.max()], 'r--', lw=2)
+ax4.set_xlabel('Actual Price')
+ax4.set_ylabel('Predicted Price')
+ax4.set_title(f'Validation Set: Actual vs Predicted\nLR={best_lr}')
+ax4.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+
+# Calculate R squared score
+
+def r2_score(y_true, y_pred):
+    """Calculate R² score"""
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    return 1 - (ss_res / ss_tot)
+
+train_r2 = r2_score(Y_train, train_pred)
+val_r2 = r2_score(Y_val, val_pred)
+
+
+print(f"Training Set:")
+print(f"  R² Score: {train_r2:.4f}")
+print(f"  MSE: {np.mean((Y_train - train_pred)**2):.2e}")
+print(f"\nValidation Set:")
+print(f"  R² Score: {val_r2:.4f}")
+print(f"  MSE: {np.mean((Y_val - val_pred)**2):.2e}")
