@@ -1,1 +1,206 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import time
+
+
+# 1. Data Preprocessing 
+
+# Load dataset
+try:
+    dataset = pd.read_csv('Housing.csv')
+except FileNotFoundError:
+    print("Error: Housing.csv not found.")
+    print("Please download the dataset and place it in the same directory.")
+    dataset = pd.DataFrame(data)
+
+
+# Select features: area, bedrooms, bathrooms, stories, parking
+X = dataset[['area', 'bedrooms', 'bathrooms', 'stories', 'parking']].values
+Y = dataset['price'].values
+
+# Split dataset 80% training and 20% validation
+X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# Normalization
+scaler_X = StandardScaler()
+scaler_Y = StandardScaler()
+
+X_train_scaled = scaler_X.fit_transform(X_train)
+X_val_scaled = scaler_X.transform(X_val)
+
+# Reshape Y to (N, 1) for scaling
+Y_train_scaled = scaler_Y.fit_transform(Y_train.reshape(-1, 1))
+Y_val_scaled = scaler_Y.transform(Y_val.reshape(-1, 1))
+
+# Convert totensors
+X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
+X_val_tensor = torch.tensor(X_val_scaled, dtype=torch.float32)
+
+# Tensors must be (N, 1) to match model output and loss function
+Y_train_tensor = torch.tensor(Y_train_scaled, dtype=torch.float32)
+Y_val_tensor = torch.tensor(Y_val_scaled, dtype=torch.float32)
+
+print(f"Training samples: {len(X_train)}")
+print(f"Validation samples: {len(X_val)}")
+print(f"Number of features: {X_train.shape[1]}")
+
+# 2. Helper Functions
+
+def r2_score(y_true, y_pred):
+    """Calculate R² score given true and predicted values (NumPy arrays)"""
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    r2 = 1 - (ss_res / ss_tot)
+    return r2
+
+def count_parameters(model):
+    """Count the total number of trainable parameters in a model"""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def train_model(model, model_name, n_epochs=200, lr=0.01):
+    """
+    Trains a given PyTorch model and reports results.
+    """
+    print(f"\n{'='*60}")
+    print(f"STARTING TRAINING: {model_name}")
+    print(f"Architecture: {model}")
+    print(f"Total Parameters: {count_parameters(model)}")
+    print(f"{'='*60}")
+    
+    # Loss function and optimizer
+    loss_fn = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr) 
+    
+    # Store losses for plotting
+    train_losses = []
+    val_losses = []
+    
+    start_time = time.time()
+    
+    for epoch in range(1, n_epochs + 1):
+        model.train() 
+
+        # Forward pass
+        Y_pred_train = model(X_train_tensor)
+        
+        # Calculate loss
+        train_loss = loss_fn(Y_pred_train, Y_train_tensor)
+        
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        train_loss.backward()
+        optimizer.step()
+        
+        # Validation
+        model.eval()
+        with torch.no_grad():
+            Y_pred_val = model(X_val_tensor)
+            val_loss = loss_fn(Y_pred_val, Y_val_tensor)
+        
+        # Store losses
+        train_losses.append(train_loss.item())
+        val_losses.append(val_loss.item())
+        
+        # Reporting
+        if epoch == 1 or epoch % 20 == 0:
+            print(f"Epoch {epoch:4d} | Train Loss: {train_loss.item():.4f} | "
+                  f"Val Loss: {val_loss.item():.4f}")
+                  
+    end_time = time.time()
+    training_time = end_time - start_time
+    
+    print(f"\n--- {model_name} Training Complete ---")
+    print(f"Total Training Time: {training_time:.2f} seconds")
+    print(f"Final Training Loss (MSE): {train_loss.item():.4f}")
+    print(f"Final Validation Loss (MSE): {val_loss.item():.4f}")
+    
+    # Evaluate R squared on the non-scaled price data
+    model.eval()
+    with torch.no_grad():
+        # Get scaled predictions
+        train_pred_scaled = model(X_train_tensor).numpy()
+        val_pred_scaled = model(X_val_tensor).numpy()
+        
+        # Inverse transform to original price scale
+        train_pred_orig = scaler_Y.inverse_transform(train_pred_scaled)
+        val_pred_orig = scaler_Y.inverse_transform(val_pred_scaled)
+        
+        # Calculate R sqaured
+        train_r2 = r2_score(Y_train, train_pred_orig.ravel())
+        val_r2 = r2_score(Y_val, val_pred_orig.ravel())
+        
+        print(f"\nTraining R squared Score: {train_r2:.4f}")
+        print(f"Validation R squared Score: {val_r2:.4f}")
+        print(f"{'='*60}\n")
+    
+    return train_losses, val_losses, training_time, train_loss.item(), val_loss.item(), train_r2, val_r2
+
+
+# 3.a
+
+# Input features = 5 (area, bedrooms, bathrooms, stories, parking), Hidden layer = 8 nodes, Output features = 1 (price)
+# Tanh activation function
+model_3a = nn.Sequential(
+    nn.Linear(5, 8),   # 5 inputs, 8 hidden nodes
+    nn.Tanh(),         # Activation function
+    nn.Linear(8, 1)    # 8 hidden nodes, 1 output
+)
+
+# Train the model
+(train_losses_3a, val_losses_3a, time_3a, 
+ final_train_loss_3a, final_val_loss_3a, 
+ train_r2_3a, val_r2_3a) = train_model(model_3a, "Model 3.a (1 Hidden Layer)", n_epochs=200)
+
+# 3.b: Three Hidden Layer Network
+
+# Define the model architecture
+# Input (5) -> Layer 1 (8) -> Tanh -> Layer 2 (16) -> Tanh -> Layer 3 (8) -> Tanh -> Output (1)
+model_3b = nn.Sequential(
+    nn.Linear(5, 8),    # 5 inputs, 8 hidden nodes
+    nn.Tanh(),
+    nn.Linear(8, 16),   # 8 inputs, 16 hidden nodes (1st additional layer)
+    nn.Tanh(),
+    nn.Linear(16, 8),   # 16 inputs, 8 hidden nodes (2nd additional layer)
+    nn.Tanh(),
+    nn.Linear(8, 1)     # 8 inputs, 1 output
+)
+
+# Train the model
+(train_losses_3b, val_losses_3b, time_3b, 
+ final_train_loss_3b, final_val_loss_3b, 
+ train_r2_3b, val_r2_3b) = train_model(model_3b, "Model 3.b (3 Hidden Layers)", n_epochs=200)
+
+
+# 4. Plotting Loss Curves
+
+plt.figure(figsize=(12, 6))
+
+# Plot for Model 3.a
+plt.subplot(1, 2, 1)
+plt.plot(train_losses_3a, label='Training Loss')
+plt.plot(val_losses_3a, label='Validation Loss')
+plt.title('Model 3.a (1 Hidden Layer) Loss')
+plt.xlabel('Epoch')
+plt.ylabel('MSE Loss')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Plot for Model 3.b
+plt.subplot(1, 2, 2)
+plt.plot(train_losses_3b, label='Training Loss')
+plt.plot(val_losses_3b, label='Validation Loss')
+plt.title('Model 3.b (3 Hidden Layers) Loss')
+plt.xlabel('Epoch')
+plt.ylabel('MSE Loss')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
 
