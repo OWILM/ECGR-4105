@@ -1,1 +1,9 @@
+# a. Create a fully connected Neural Network for all 10 classes in CIFAR-10 with only one hidden layer with the size of 512. 
+# Train your network (Do as many epochs as you need). Report your training time, training loss and evaluation accuracy after each epoch. 
+# Analyze your results in your report. 
 
+# b. Extend your network with two more additional hidden layers, like the example we did in lecture. 
+# Train your network for 300 epochs. 
+# Report your training time, loss, and evaluation accuracy after 300 epochs. 
+# Analyze your results in your report and compare your model size and accuracy over the baseline implementation in Problem1a. 
+# Do you see any over-fitting? 
