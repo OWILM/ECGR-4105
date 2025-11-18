@@ -1,5 +1,4 @@
 # Bulid a fully connected neural network with multiple hidden layers for the cancer dataset, which you have done before. 
-# The diabetes dataset is available on Canvas. 
 # Use as may hidden layers and neurons that you feel proper for this problem. 
 # Train it and plot your loss for both training set and validations set, use 20%, and 80% split between your training and validation set. # Plot your results and also report your accuracy, precision, recall and F1 score. 
 # Compare your results against logistic dataset and support vector machine.
