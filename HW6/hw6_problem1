@@ -3,3 +3,24 @@
 # Use as may hidden layers and neurons that you feel proper for this problem. 
 # Train it and plot your loss for both training set and validations set, use 80%, and 20% split between your training and validation set. # Plot your results and also report your accuracy, precision, recall and F1 score. 
 # Compare your results against logistic dataset and support vector machine.
+
+
+
+
+
+
+
+
+
+
+
+
+
+data = pd.read_csv("ECGR-4105/HW3/diabetes.csv")
+
+# Define explanatory variables (X) and outcome variable (Y)
+X = data.iloc[:, :-1].values
+Y = data.iloc[:, -1].values
+
+# Split the Data (80% train, 20% test)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.20, random_state=0)
