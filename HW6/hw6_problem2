@@ -1,4 +1,133 @@
 # Bulid a fully connected neural network with multiple hidden layers for the cancer dataset, which you have done before. 
 # Use as may hidden layers and neurons that you feel proper for this problem. 
-# Train it and plot your loss for both training set and validations set, use 20%, and 80% split between your training and validation set. # Plot your results and also report your accuracy, precision, recall and F1 score. 
+# Train it and plot your loss for both training set and validations set, use 80%, and 20% split between your training and validation set. # Plot your results and also report your accuracy, precision, recall and F1 score. 
 # Compare your results against logistic dataset and support vector machine.
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.datasets import load_breast_cancer
+
+# 1. Load Data
+data = load_breast_cancer()
+X = data.data
+Y = data.target
+
+# 2. Split the Data (80% train, 20% validation)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.20, random_state=0)
+
+# 3. Scaling and Standardization
+sc_X = StandardScaler()
+X_train = sc_X.fit_transform(X_train)
+X_test = sc_X.transform(X_test)
+
+# 4. Convert to PyTorch tensors
+X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+Y_train_tensor = torch.tensor(Y_train, dtype=torch.long)
+X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+Y_test_tensor = torch.tensor(Y_test, dtype=torch.long)
+
+print(f"Training samples: {len(X_train)}")
+print(f"Validation samples: {len(X_test)}")
+print(f"Number of features: {X_train.shape[1]}")
+
+# 5. Define the Neural Network
+class BreastCancerNN(nn.Module):
+    def __init__(self, input_dim):
+        super(BreastCancerNN, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, 32), # Input layer (30 features) -> Hidden 1 (32 neurons)
+            nn.ReLU(),
+            nn.Linear(32, 16),        # Hidden 1 -> Hidden 2 (16 neurons)
+            nn.ReLU(),
+            nn.Linear(16, 2),         # Hidden 2 -> Output (2 classes)
+            nn.LogSoftmax(dim=1)      # LogSoftmax for NLLLoss
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+input_dim = X_train.shape[1]
+model = BreastCancerNN(input_dim)
+
+# 6. Training Setup
+optimizer = optim.SGD(model.parameters(), lr=0.01)
+loss_fn = nn.NLLLoss()
+
+# Arrays to store loss for plotting
+train_losses = []
+val_losses = []
+n_epochs = 300
+
+# 7. Training Loop
+print("\nStarting Neural Network Training...")
+for epoch in range(n_epochs):
+    # Forward pass
+    model.train()
+    y_pred = model(X_train_tensor)
+    loss = loss_fn(y_pred, Y_train_tensor)
+    
+    # Backward pass
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    
+    # Validation loss
+    model.eval()
+    with torch.no_grad():
+        y_val_pred = model(X_test_tensor)
+        val_loss = loss_fn(y_val_pred, Y_test_tensor)
+    
+    train_losses.append(loss.item())
+    val_losses.append(val_loss.item())
+    
+    if (epoch + 1) % 20 == 0:
+        print(f"Epoch {epoch+1}/{n_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {val_loss.item():.4f}")
+
+# 8. Plotting Loss
+plt.figure(figsize=(10, 6))
+plt.plot(train_losses, label='Training Loss')
+plt.plot(val_losses, label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss over Epochs')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 9. Neural Network Evaluation
+model.eval()
+with torch.no_grad():
+    y_test_pred_log_probs = model(X_test_tensor)
+    # Get the predicted class (0 or 1) by finding the index of the max log-probability
+    _, y_test_pred_tensor = torch.max(y_test_pred_log_probs, 1)
+    y_test_pred_nn = y_test_pred_tensor.numpy()
+
+# Helper function to calculate and print metrics
+def get_metrics(y_true, y_pred, model_name):
+    acc = accuracy_score(y_true, y_pred)
+    prec = precision_score(y_true, y_pred, zero_division=0)
+    rec = recall_score(y_true, y_pred, zero_division=0)
+    f1 = f1_score(y_true, y_pred, zero_division=0)
+    return acc, prec, rec, f1
+
+
+# Collect Metrics
+metrics_nn = get_metrics(Y_test, y_test_pred_nn, "Neural Network")
+
+# 12. Reporting Results
+results = pd.DataFrame({
+    'Metric': ['Accuracy', 'Precision', 'Recall', 'F1 Score'],
+    'Neural Network': metrics_nn,
+})
+
+print("\n--- Model Performance Comparison ---")
+print(results)
