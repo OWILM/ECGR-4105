@@ -3,3 +3,154 @@
 # Report your training time, loss, and evaluation accuracy after 300 epochs. 
 # Analyze your results in your report and compare your model size and accuracy over the baseline implementation in Problem1a. 
 # Do you see any over-fitting? 
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+import time
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
+
+# 1. Load and Preprocess Data
+print("Loading CIFAR-10 dataset...")
+
+# Define normalization transform (standard for CIFAR-10)
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4915, 0.4823, 0.4468), (0.2470, 0.2435, 0.2616))
+])
+
+# Load datasets
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                        download=True, transform=transform)
+testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                       download=True, transform=transform)
+
+# Batch training setup
+batch_size = 64
+train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True)
+test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
+
+input_dim = 3 * 32 * 32 # 3072
+print(f"Training samples: {len(trainset)}")
+print(f"Validation samples: {len(testset)}")
+
+# 2. Define the Extended Neural Network
+# Added 2 additional hidden layers (512 -> 256 -> 128 -> 10)
+class CIFAR10DeepNN(nn.Module):
+    def __init__(self, input_dim):
+        super(CIFAR10DeepNN, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, 512),  # Hidden Layer 1
+            nn.ReLU(),
+            nn.Linear(512, 256),        # Hidden Layer 2 (New)
+            nn.ReLU(),
+            nn.Linear(256, 128),        # Hidden Layer 3 (New)
+            nn.ReLU(),
+            nn.Linear(128, 10),         # Output Layer
+            nn.LogSoftmax(dim=1)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+model = CIFAR10DeepNN(input_dim)
+
+# Function to count parameters
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+print(f"\nModel Architecture: {model}")
+print(f"Total Trainable Parameters: {count_parameters(model):,}")
+
+# 3. Training Setup
+optimizer = optim.SGD(model.parameters(), lr=0.01) 
+loss_fn = nn.NLLLoss()
+
+# Arrays to store metrics
+train_losses = []
+val_accuracies = []
+epoch_times = []
+
+n_epochs = 300 
+
+# 4. Training Loop
+print(f"\nStarting Deep Neural Network Training ({n_epochs} epochs)...")
+print(f"{'Epoch':<6} | {'Time (s)':<10} | {'Train Loss':<12} | {'Val Accuracy':<12}")
+print("-" * 50)
+
+for epoch in range(n_epochs):
+    start_time = time.time()
+    running_loss = 0.0
+    
+    # Training Phase
+    model.train()
+    for i, (images, labels) in enumerate(train_loader):
+        images = images.view(-1, input_dim) # Flatten
+        
+        outputs = model(images)
+        loss = loss_fn(outputs, labels)
+        
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        running_loss += loss.item()
+    
+    epoch_loss = running_loss / len(train_loader)
+    
+    # Measure time
+    end_time = time.time()
+    epoch_duration = end_time - start_time
+    epoch_times.append(epoch_duration)
+    train_losses.append(epoch_loss)
+    
+    # Validation Evaluation
+    model.eval()
+    all_preds = []
+    all_labels = []
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.view(-1, input_dim)
+            outputs = model(images)
+            _, predicted = torch.max(outputs, 1)
+            all_preds.extend(predicted.numpy())
+            all_labels.extend(labels.numpy())
+            
+    acc = accuracy_score(all_labels, all_preds)
+    val_accuracies.append(acc)
+    
+    if (epoch + 1) % 10 == 0:
+        print(f"{epoch+1:<6} | {epoch_duration:<10.4f} | {epoch_loss:<12.4f} | {acc:<12.4f}")
+
+# 5. Plotting Results
+plt.figure(figsize=(12, 5))
+
+# Plot Loss
+plt.subplot(1, 2, 1)
+plt.plot(train_losses, label='Training Loss', color='blue')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Training Loss over Epochs')
+plt.grid(True)
+plt.legend()
+
+# Plot Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(val_accuracies, label='Validation Accuracy', color='green')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Validation Accuracy over Epochs')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# 6. Final Report
+print("\n--- Final Analysis ---")
+print(f"Total Training Time: {sum(epoch_times):.2f} seconds")
+print(f"Average Time per Epoch: {sum(epoch_times)/n_epochs:.4f} seconds")
+print(f"Final Training Loss: {train_losses[-1]:.4f}")
+print(f"Final Validation Accuracy: {val_accuracies[-1]*100:.2f}%")
