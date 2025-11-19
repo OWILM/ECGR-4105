@@ -1,0 +1,5 @@
+# b. Extend your network with two more additional hidden layers, like the example we did in lecture. 
+# Train your network for 300 epochs. 
+# Report your training time, loss, and evaluation accuracy after 300 epochs. 
+# Analyze your results in your report and compare your model size and accuracy over the baseline implementation in Problem1a. 
+# Do you see any over-fitting? 
