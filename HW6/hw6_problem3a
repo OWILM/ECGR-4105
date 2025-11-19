@@ -1,3 +1,138 @@
 # a. Create a fully connected Neural Network for all 10 classes in CIFAR-10 with only one hidden layer with the size of 512. 
 # Train your network (Do as many epochs as you need). Report your training time, training loss and evaluation accuracy after each epoch. 
 # Analyze your results in your report. 
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+import time
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
+
+# Image Preprocessing and Loading
+print("Loading CIFAR-10 dataset...")
+
+# Define normalization transform
+transform = transforms.Compose([
+    transforms.ToTensor(), # Converts HxWxC [0,255] to CxHxW [0.0,1.0] 
+    transforms.Normalize((0.4915, 0.4823, 0.4468), (0.2470, 0.2435, 0.2616))
+])
+
+# Load datasets
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                        download=True, transform=transform)
+testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                       download=True, transform=transform)
+
+# For a Fully Connected Network, need to flatten the images
+# Input features = 32*32*3 = 3072
+print("Transforming data to tensors...")
+
+train_loader = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=False)
+test_loader = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False)
+
+# Extract full tensors
+X_train_raw, Y_train = next(iter(train_loader))
+X_test_raw, Y_test = next(iter(test_loader))
+
+# Flatten inputs: (N, 3, 32, 32) -> (N, 3072)
+input_dim = 3 * 32 * 32 # 3072
+X_train = X_train_raw.view(-1, input_dim)
+X_test = X_test_raw.view(-1, input_dim)
+
+print(f"Training samples: {len(X_train)}")
+print(f"Validation samples: {len(X_test)}")
+print(f"Input features: {input_dim}")
+
+# 2. Define the Neural Network
+class CIFAR10NN(nn.Module):
+    def __init__(self, input_dim):
+        super(CIFAR10NN, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, 512),  # Input -> Hidden Layer (512 neurons)
+            nn.ReLU(),
+            nn.Linear(512, 10),         # Hidden -> Output (10 classes)
+            nn.LogSoftmax(dim=1)        # LogSoftmax for NLLLoss
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+model = CIFAR10NN(input_dim)
+
+# 3. Training Setup
+optimizer = optim.SGD(model.parameters(), lr=0.01) 
+loss_fn = nn.NLLLoss()
+
+# Arrays to store metrics
+train_losses = []
+val_accuracies = []
+epoch_times = []
+
+n_epochs = 50 
+
+# 4. Training Loop
+print("\nStarting Neural Network Training...")
+print(f"{'Epoch':<6} | {'Time (s)':<10} | {'Train Loss':<12} | {'Val Accuracy':<12}")
+print("-" * 50)
+
+for epoch in range(n_epochs):
+    start_time = time.time()
+    
+    # Forward pass
+    model.train()
+    y_pred = model(X_train)
+    loss = loss_fn(y_pred, Y_train)
+    
+    # Backward pass
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    
+    # Measure time
+    end_time = time.time()
+    epoch_duration = end_time - start_time
+    epoch_times.append(epoch_duration)
+    train_losses.append(loss.item())
+    
+    # Validation Evaluation
+    model.eval()
+    with torch.no_grad():
+        y_val_log_probs = model(X_test)
+        _, y_val_pred = torch.max(y_val_log_probs, 1)
+        acc = accuracy_score(Y_test.numpy(), y_val_pred.numpy())
+        val_accuracies.append(acc)
+    
+    print(f"{epoch+1:<6} | {epoch_duration:<10.4f} | {loss.item():<12.4f} | {acc:<12.4f}")
+
+# 5. Plotting Results
+plt.figure(figsize=(12, 5))
+
+# Plot Loss
+plt.subplot(1, 2, 1)
+plt.plot(train_losses, label='Training Loss', color='blue')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Training Loss over Epochs')
+plt.grid(True)
+plt.legend()
+
+# Plot Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(val_accuracies, label='Validation Accuracy', color='green')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Validation Accuracy over Epochs')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# 6. Final Report
+print("\n--- Final Analysis ---")
+print(f"Total Training Time: {sum(epoch_times):.2f} seconds")
+print(f"Average Time per Epoch: {sum(epoch_times)/n_epochs:.4f} seconds")
+print(f"Final Training Loss: {train_losses[-1]:.4f}")
+print(f"Final Validation Accuracy: {val_accuracies[-1]*100:.2f}%")
