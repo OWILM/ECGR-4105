@@ -71,7 +71,7 @@ input_dim = X_train.shape[1]
 model = DiabetesNN(input_dim)
 
 # 6. Training Setup
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = optim.SGD(model.parameters(), lr=0.1)
 loss_fn = nn.NLLLoss() # Changed to Negative Log Likelihood Loss
 
 # Arrays to store loss for plotting
